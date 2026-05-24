@@ -518,8 +518,8 @@ function el(tag, attrs={}, children=[]){
   for (const k in attrs) e.setAttribute(k, attrs[k]);
   for (const c of [].concat(children)) {
     if (c == null) continue;
-    if (typeof c === "string") e.appendChild(document.createTextNode(c));
-    else e.appendChild(c);
+    if (c instanceof Node) e.appendChild(c);
+    else e.appendChild(document.createTextNode(String(c)));
   }
   return e;
 }
