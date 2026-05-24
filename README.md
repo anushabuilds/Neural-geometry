@@ -1,4 +1,4 @@
-# Arithmetic in the Wild — Explainer
+# Arithmetic in the Wild 
 
 A single-page interactive walkthrough of [Feucht, Haklay et al. 2026, *Arithmetic in the Wild: Llama uses Base-10 Addition to Reason About Cyclic Concepts*](https://arxiv.org/abs/2605.01148).
 
