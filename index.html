@@ -321,6 +321,34 @@ details > summary{cursor:pointer;color:var(--accent2);font-size:14px}
   <h2><span class="num">§6</span>Fourier probes — the format of the intermediate</h2>
   <p class="lede">If the intermediate is a number, in what basis? Following Kantamneni &amp; Tegmark and Zhou et al., the paper looks for <strong>Fourier features</strong>: linear directions in the residual stream that encode $\sin(2\pi n / T)$ and $\cos(2\pi n / T)$ for various periods $T$.</p>
 
+  <h3>Primer: what is a Fourier feature?</h3>
+  <p>Start with the classical idea. Joseph Fourier (1807) showed that any well‑behaved periodic function can be written as a sum of sines and cosines at different frequencies. The pair $(\sin\theta, \cos\theta)$ is the atomic unit: every other periodic shape is a weighted combination of those at various periods $T$.</p>
+
+  <p>The <em>same pair</em> $(\sin, \cos)$ is also the natural way to encode "where on a circle" you are. Given an integer $n$ and a period $T$, define the phase $\theta_T = 2\pi n / T$. Then the point $(\cos\theta_T,\,\sin\theta_T)$ sits on the unit circle, and it rotates by a constant angle whenever $n$ increases by 1. Two integers that differ by exactly $T$ land on the <em>same</em> point — i.e. this encoding is $n \bmod T$, but stored as 2D coordinates instead of a remainder.</p>
+
+  <div class="callout tip">
+    <span class="lbl">In one sentence</span>
+    A <strong>Fourier feature</strong> for period $T$ is a pair of directions in activation space such that, when you project a hidden state onto them, you read off $\sin\theta_T$ and $\cos\theta_T$ for the number the model is "thinking about" — a 2D circular dial that tracks $n \bmod T$.
+  </div>
+
+  <h4>Why a neural network would invent this</h4>
+  <p>Three reasons this is the right shape for arithmetic, all of which the paper invokes:</p>
+  <ol class="steps">
+    <li><strong>Addition becomes rotation.</strong> If you store $n$ as $(\cos\theta_T,\sin\theta_T)$, then "add $b$ to $n$" is just "rotate by $b\cdot 2\pi/T$". The model only needs to learn one rotation operator per period, not a lookup table over every $(n,b)$ pair. This is the trick small transformers spontaneously learn on modular arithmetic (Nanda 2023, Zhong 2023).</li>
+    <li><strong>It's linear.</strong> Sine and cosine of $n$ are <em>linear</em> functions of $n$'s one‑hot — they can be written as a single weight vector dotted with $h$. Neural networks have many linear maps for free, so this representation is cheap.</li>
+    <li><strong>Multiple periods uniquely identify an integer.</strong> Knowing $n \bmod 2$, $n \bmod 5$, and $n \bmod 10$ doesn't quite pin $n$ down, but adding $T=20, 50, 100$ does — up to $\mathrm{lcm}$ of the periods. This is the Chinese remainder theorem, in geometric form: a handful of small circles together encode every integer in a long range.</li>
+  </ol>
+
+  <h4>Why base‑10 periods $\{2,5,10,20,50,100\}$?</h4>
+  <p>Numbers in text are written in base‑10. A token like <code>"47"</code> is a single discrete piece, but the model sees adjacent tokens — <code>"46"</code>, <code>"48"</code> — and has to relate them. The cheapest way to pick up "ones digit" and "tens digit" structure is to track residues at periods that divide 10 and 100. Period 2 catches parity. Period 5 catches "ends in 0 or 5." Period 10 catches the full ones digit. Periods 20, 50, 100 reach further. The model never invents period 7 or period 12 because no token co‑occurrence pressure pushes it to.</p>
+
+  <p>That is the central surprise of the paper: a months task <em>seems</em> like it should need period 12, but the cyclic representation Llama actually uses at L18 is the base‑10 set inherited from generic arithmetic — and the "→ February" step is a separate downstream lookup, not modular arithmetic on a months‑circle.</p>
+
+  <div class="callout">
+    <span class="lbl">Concretely, inside Llama</span>
+    For each period $T$ and layer $\ell$, the Fourier feature is a pair of vectors $(w^{(\ell,T)}_{\sin}, w^{(\ell,T)}_{\cos}) \in \mathbb R^{4096}$. The probe asserts: <em>"there exist these two directions in the residual stream such that $\langle w_{\sin}, h\rangle \approx \sin\theta_T$ and $\langle w_{\cos}, h\rangle \approx \cos\theta_T$ for whatever integer $h$ encodes."</em> If the MSE fits, the feature exists. If steering along $w_{\sin}, w_{\cos}$ changes the output, the feature is <em>causal</em>.
+  </div>
+
   <h3>Training a Fourier probe</h3>
   <p>For each period $T$, learn two affine probes (one sine, one cosine) from the layer‑$\ell$ last‑token activation $h^{(\ell)}_{a+b}$ of an addition prompt:</p>
   <div class="eq">$$\min\;\mathrm{MSE}\!\left(\langle w^{(\ell,T)}_{\sin}, h^{(\ell)}_{a+b}\rangle + b^{(\ell,T)}_{\sin},\; \sin\!\tfrac{2\pi(a+b)}{T}\right)$$</div>
