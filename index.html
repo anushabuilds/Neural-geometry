@@ -572,6 +572,10 @@ const mSum = document.getElementById("m-sum");
 const mOut = document.getElementById("m-out");
 const mechSvg = document.getElementById("mech-svg");
 
+// Months and weekdays are conventionally 1-indexed (Jan=1, Sun=1).
+// Hours are 0-indexed (00:00..23:00). Addition has no concept.
+function displayBase(t){ return (t==="hours" || t==="add") ? 0 : 1; }
+
 function populateMechSelectors(){
   const t = mTask.value;
   const d = TASK_DATA[t];
@@ -580,11 +584,13 @@ function populateMechSelectors(){
     fillSelect(mB, Array.from({length:50}, (_,i)=>i+1));
     mA.value = 7; mB.value = 9;
   } else {
-    fillSelect(mA, d.labels.map((l,i)=>({i,l})), o=>o.i, o=>o.l);
+    const base = displayBase(t);
+    // Dropdown value is the natural number (Aug=8, 18:00=18).
+    fillSelect(mA, d.labels.map((l,i)=>({v:i+base, l})), o=>o.v, o=>o.l);
     fillSelect(mB, Array.from({length:2*d.p}, (_,i)=>i+1));
-    if (t==="months"){ mA.value = 7; mB.value = 6; }
-    else if (t==="weekdays"){ mA.value = 5; mB.value = 3; }
-    else { mA.value = 18; mB.value = 4; }
+    if (t==="months"){ mA.value = 8; mB.value = 6; }       // August + 6
+    else if (t==="weekdays"){ mA.value = 6; mB.value = 3; } // Friday(=6) + 3
+    else { mA.value = 18; mB.value = 4; }                   // 18:00 + 4
   }
   drawMech();
 }
@@ -592,17 +598,27 @@ function drawMech(){
   clear(mechSvg);
   const t = mTask.value;
   const d = TASK_DATA[t];
-  let aVal, bVal, sum, outLabel;
+  let aVal, bVal, sum, outLabel, aLabel;
   if (t === "add"){
     aVal = +mA.value; bVal = +mB.value;
     sum = aVal+bVal; outLabel = String(sum);
+    aLabel = String(aVal);
   } else {
-    aVal = +mA.value;          // index in labels (0..p-1)
+    const base = displayBase(t);
+    aVal = +mA.value;          // natural-number value (e.g. Aug=8, 18:00=18)
     bVal = +mB.value;          // offset 1..2p
     sum = aVal + bVal;
-    outLabel = d.labels[ sum % d.p ];
+    // Map natural-number sum back to a label.
+    // For 1-indexed (months/weekdays): result 1..p, with p meaning "the last label".
+    //   outIdx = ((sum - 1) mod p)
+    // For 0-indexed (hours): outIdx = sum mod p
+    const outIdx = base === 1
+      ? ((sum - 1) % d.p + d.p) % d.p
+      : ((sum) % d.p + d.p) % d.p;
+    outLabel = d.labels[outIdx];
+    aLabel = d.labels[aVal - base];
   }
-  mSum.textContent = "sum = " + (t==="add"? `${aVal}+${bVal}=${sum}` : `${aVal}+${bVal}=${sum}`);
+  mSum.textContent = "sum = " + `${aVal}+${bVal}=${sum}`;
   mOut.textContent = "output: " + outLabel;
 
   // Layout: input box, arrow, 5 period circles, arrow, output box
@@ -610,7 +626,6 @@ function drawMech(){
   // Input
   mechSvg.appendChild(el("rect",{x:10,y:130,width:130,height:100,rx:10,fill:"var(--panel2)",stroke:"var(--line)"}));
   mechSvg.appendChild(el("text",{x:75,y:155,fill:"var(--muted)","text-anchor":"middle","font-size":11,"letter-spacing":"1.5"},"INPUT"));
-  const aLabel = (t==="add" ? String(aVal) : d.labels[aVal]);
   mechSvg.appendChild(el("text",{x:75,y:185,fill:"var(--accent)","text-anchor":"middle","font-size":15,"font-weight":600}, aLabel));
   mechSvg.appendChild(el("text",{x:75,y:208,fill:"var(--ink-dim)","text-anchor":"middle","font-size":13}, "+ " + bVal));
 
