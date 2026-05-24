@@ -1,0 +1,8 @@
+# local working artifacts — not for the web
+paper.pdf
+paper.txt
+
+# OS / editor cruft
+.DS_Store
+.claude/
+*.log
