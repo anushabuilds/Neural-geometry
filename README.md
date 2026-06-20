@@ -4,6 +4,4 @@ A single-page interactive walkthrough of [Feucht, Haklay et al. 2026, *Arithmeti
 
 Built for one focused reading session: covers the central claim (Llama-3.1-8B does base-10 addition, not modular arithmetic, for cyclic tasks), the four interpretability methods used (DAS, cross-task patching, Fourier probes, neuron ablations), and includes interactive visualizations of the mechanism, low-rank subspaces, Fourier-feature integer encodings, steering, and neuron clusters.
 
-## View locally
-
-Just open `index.html` in a browser.
+Open `index.html` in a browser to view locally.
